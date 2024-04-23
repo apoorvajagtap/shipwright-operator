@@ -87,6 +87,40 @@ func ToLowerCaseKeys(keyValues map[string]string) map[string]string {
 	return newMap
 }
 
+// Recursively truncates the given "field" from CustomResourceDefinition to 50 characters.
+func truncateFieldRecursively(data map[string]interface{}, maxLength int, field string) {
+	for key, value := range data {
+		if key == field {
+			if str, ok := value.(string); ok && len(str) > maxLength {
+				data[key] = str[:maxLength]
+			}
+			continue
+		}
+		if subObj, ok := value.(map[string]interface{}); ok {
+			truncateFieldRecursively(subObj, 50, field)
+		}
+		if subObjs, ok := value.([]interface{}); ok {
+			for _, subObj := range subObjs {
+				if subObjMap, ok := subObj.(map[string]interface{}); ok {
+					truncateFieldRecursively(subObjMap, 50, field)
+				}
+			}
+		}
+	}
+}
+
+// truncates the given "field" from CustomResourceDefinition to 50 characters.
+func TruncateField(field string, targetLength int) manifestival.Transformer {
+	return func(u *unstructured.Unstructured) error {
+		if u.GetKind() != "CustomResourceDefinition" {
+			return nil
+		}
+		data := u.Object
+		truncateFieldRecursively(data, targetLength, field)
+		return nil
+	}
+}
+
 // deploymentImages replaces container and env vars images.
 func DeploymentImages(images map[string]string) manifestival.Transformer {
 	return func(u *unstructured.Unstructured) error {
