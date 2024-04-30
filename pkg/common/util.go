@@ -87,36 +87,42 @@ func ToLowerCaseKeys(keyValues map[string]string) map[string]string {
 	return newMap
 }
 
-// Recursively truncates the given "field" from CustomResourceDefinition to 50 characters.
-func truncateFieldRecursively(data map[string]interface{}, maxLength int, field string) {
-	for key, value := range data {
-		if key == field {
-			if str, ok := value.(string); ok && len(str) > maxLength {
-				data[key] = str[:maxLength]
-			}
-			continue
-		}
-		if subObj, ok := value.(map[string]interface{}); ok {
-			truncateFieldRecursively(subObj, 50, field)
-		}
-		if subObjs, ok := value.([]interface{}); ok {
-			for _, subObj := range subObjs {
-				if subObjMap, ok := subObj.(map[string]interface{}); ok {
-					truncateFieldRecursively(subObjMap, 50, field)
+// truncateNestedFields truncates the named "field" from the given data object and all of its sub-objects to maxLength characters.
+func truncateNestedFields(data map[string]interface{}, maxLength int, field string) {
+	queue := []map[string]interface{}{data}
+
+	for len(queue) > 0 {
+		curr := queue[0]
+		queue = queue[1:]
+
+		for key, value := range curr {
+			if key == field {
+				if str, ok := value.(string); ok && len(str) > maxLength {
+					curr[key] = str[:maxLength]
+				}
+			} else {
+				if subObj, ok := value.(map[string]interface{}); ok {
+					queue = append(queue, subObj)
+				} else if subObjs, ok := value.([]interface{}); ok {
+					for _, subObj := range subObjs {
+						if subObjMap, ok := subObj.(map[string]interface{}); ok {
+							queue = append(queue, subObjMap)
+						}
+					}
 				}
 			}
 		}
 	}
 }
 
-// truncates the given "field" from CustomResourceDefinition to 50 characters.
-func TruncateField(field string, targetLength int) manifestival.Transformer {
+// TruncateCRDFieldTransformer returns a manifestival.Transformer that truncates the value of the given field within a CRD spec to the provided max length.
+func TruncateCRDFieldTransformer(field string, maxLength int) manifestival.Transformer {
 	return func(u *unstructured.Unstructured) error {
 		if u.GetKind() != "CustomResourceDefinition" {
 			return nil
 		}
 		data := u.Object
-		truncateFieldRecursively(data, targetLength, field)
+		truncateNestedFields(data, maxLength, field)
 		return nil
 	}
 }
