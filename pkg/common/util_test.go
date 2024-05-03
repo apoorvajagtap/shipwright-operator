@@ -146,8 +146,8 @@ func TestTruncateCRDFieldTransformer(t *testing.T) {
 					- tst
 		`
 		u := &unstructured.Unstructured{}
-		yaml.Unmarshal([]byte(crdYaml), &u.Object)
-		TruncateCRDFieldTransformer("description", 10)(u)
+		_ = yaml.Unmarshal([]byte(crdYaml), &u.Object)
+		_ = TruncateCRDFieldTransformer("description", 10)(u)
 
 		isDscriptionTruncated := CheckNestedFieldLengthWithinLimit(u.Object, 10, "description")
 		Expect(isDscriptionTruncated).To(Equal(true))
