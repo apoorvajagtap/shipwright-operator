@@ -49,7 +49,7 @@ jobs:
     - name: Verify OLM bundle
       run: make verify-bundle
     - name: Run golangci-lint
-      uses: golangci/golangci-lint-action@v2
+      uses: golangci/golangci-lint-action@v3
       with:
         args: --timeout=10m
   e2e:
